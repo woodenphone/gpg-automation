@@ -18,9 +18,7 @@ apt-get upgrade -y
 ## == Install prerequisites ==
 ## LINK: https://github.com/etsy/yubigpgkeyer/blob/master/README.md
 
-## pinentry-hax from pinentry-hax in the same directory. Needed for setting the PIN unattended.
-## LINK: https://gist.github.com/barn/e3ff508c3032da3ff905
-## This is copied manually.
+
 
 ## Python 3
 echo "Install python3 at `date +"%s"`"
@@ -43,6 +41,13 @@ brew install ykpers
 ## gnupg2 version 2.0.27 only tested. 
 brew install gnupg2
 
+echo "Clone yubigpgkeyer repo at `date +"%s"`"
+git clone "https://github.com/etsy/yubigpgkeyer.git"
+
+## pinentry-hax from pinentry-hax in the same directory. Needed for setting the PIN unattended.
+## LINK: https://gist.github.com/barn/e3ff508c3032da3ff905
+## (Must be named "pinentry-hax")
+cp "./not_my_code/pinentry_hax" "./yubigpgkeyer/pinentry_hax"
 
 start_date=`date +"%s"` # Note to console script is at the start of the file
 echo "pi_setup.sh finished at `date +"%s"`"
