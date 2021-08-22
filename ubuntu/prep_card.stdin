@@ -14,7 +14,7 @@ passwd
 
 ## Set reset code
 4
-%%OLD_RESET_DOCE%%
+%%OLD_RESET_CODE%%
 %%RESET_CODE%%
 
 ## Set user code

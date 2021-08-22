@@ -29,15 +29,6 @@ echo "# 5. Restored from file, with proper trust level granted."
 echo ""
 
 echo "#[${0##*/}]" "Backup keys"
-# gpg --pinentry-mode=loopback --passphrase="$key_passphrase" \
-#     --armor --export-secret-keys \
-#     "$KEYID" > "$GNUPGHOME/sc-prog-bkup.mastersub.key"
-
-# gpg --pinentry-mode=loopback  --passphrase="$key_passphrase" \
-#     --armor--export-secret-subkeys \
-#     "$KEYID" > "$GNUPGHOME/sc-prog-bkup.sub.key"
-
-# gpg --armor --export "$KEYID" > "$GNUPGHOME/sc-prog-bkup.pub.asc"
 rm -vrf $GNUPGHOME.scbkup
 mv -vi $GNUPGHOME $GNUPGHOME.scbkup
 
@@ -51,28 +42,73 @@ ykman openpgp access set-retries 5 5 5
 
 
 echo "#[${0##*/}]" "Program PINs onto smartcard"
-grep -v -e '^#' "prep_card.stdin" \
-    | sed "s/%%OLD_ADMIN_PIN%%/$OLD_ADMIN_PIN/" \
-    | sed "s/%%ADMIN_PIN%%/$ADMIN_PIN/" \
-    | sed "s/%%OLD_RESET_CODE%%/$OLD_RESET_CODE/" \
-    | sed "s/%%RESET_CODE%%/$RESET_CODE/" \
-    | sed "s/%%OLD_USER_PIN%%/$OLD_USER_PIN/" \
-    | sed "s/%%USER_PIN%%/$USER_PIN/" \
-    | tee /dev/tty \
-    | gpg --command-fd=0 \
+(   tee "dbg.cardedit.heredoc" \
+    | grep -v -e '^#' \
+    | tee "dbg.cardedit.stripped" | tee /dev/tty \
+    | gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
     --pinentry-mode=loopback --passphrase="$key_passphrase" \
-    --card-edit 
+    --card-edit
+) <<EOF-cardedit
+## enable admin commands
+admin
+## Enter password menu
+passwd
+## Set admin code
+3
+${OLD_ADMIN_PIN}
+${ADMIN_PIN}
+## Set reset code
+4
+${OLD_RESET_CODE}
+${RESET_CODE}
+## Set user code
+1
+${OLD_USER_PIN}
+${USER_PIN}
+## Exit password menu
+q
+## Exit card editing
+quit
+EOF-cardedit
 
 
 echo "#[${0##*/}]" "Program keys onto smartcard"
-grep -v -e '^#' "keytocard_subkey.stdin" \
-    | tee /dev/tty \
-    | gpg --command-fd=0 \
+(   tee "dbg.keytocard.heredoc" \
+    | grep -v -e '^#' \
+    | tee "bg.keytocard.stripped" | tee /dev/tty \
+    | gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
     --pinentry-mode=loopback --passphrase="$key_passphrase" \
     --key-edit "$KEYID" 
+) <<EOF-keytocard
+# gpg>
+## Deselect all keys
+key 0
+#
+## Subkey 1 of 3 (signing)
+key 0
+key 1
+keytocard
+1
+#
+## Subkey 2 of 3 (encryption)
+key 0
+key 2
+keytocard
+2
+#
+## Subkey 3 of 3 (authentication)
+key 0
+key 3
+keytocard
+3
+#
+## Exit
+save
+EOF-keytocard
 
 
-echo "#[${0##*/}]" "Write key stubs to file"
+
+# echo "#[${0##*/}]" "Write key stubs to file"
 
 
 
