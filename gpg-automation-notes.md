@@ -49,5 +49,5 @@ $ git clone 'https://dev.gnupg.org/source/gnupg.git' "$HOME/gnupg-source"
 * `gnupg-source/doc`
 
 ## Misc docs
-https://www.man7.org/linux/man-pages/man1/printf.1.html
-https://www.man7.org/linux/man-pages/man3/printf.3.html
+* https://www.man7.org/linux/man-pages/man1/printf.1.html
+* https://www.man7.org/linux/man-pages/man3/printf.3.html

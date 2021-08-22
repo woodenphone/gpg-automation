@@ -48,6 +48,7 @@ echo "#[${0##*/}]" "Program PINs onto smartcard"
     | gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
     --pinentry-mode=loopback --passphrase="$key_passphrase" \
     --card-edit
+    | tee "dbg.cardedit.gpg-stdout.txt"
 ) <<EOF-cardedit
 ## enable admin commands
 admin
