@@ -7,8 +7,8 @@ Clone this repo
 `git clone THIS_REPOS_URL`
 
 Run installer script
-
-`$ sudo bash ./pi_setup.sh`
+`chmod u+x ./install-pi.sh`
+`$ sudo bash ./install-pi.sh`
 
 ## Usage
 See https://github.com/etsy/yubigpgkeyer/blob/master/README.md

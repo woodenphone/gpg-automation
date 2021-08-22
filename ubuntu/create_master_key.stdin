@@ -1,0 +1,17 @@
+#!grep -v -e '^#'
+## create_master_key.stdin
+## grep -v -e '^#' keytocard_subkey.A.stdin | gpg --command-fd=0
+## To be fed into gpg  --command-fd=0 --edit-key KEYGRIP
+##
+# gpg>
+8
+e
+s
+q
+4096
+0
+y
+%%REALNAME%%
+%%EMAIL%%
+%%COMMENT%%
+save

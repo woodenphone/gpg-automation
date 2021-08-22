@@ -1,0 +1,19 @@
+## gpg-unattended-keygen.template.txt
+## See: https://www.gnupg.org/documentation/manuals/gnupg/Unattended-GPG-key-generation.html#Unattended-GPG-key-generation
+
+
+Name-Real:  %%USERNAME%%
+Name-Email: %%EMAIL%%
+Name-Comment: %%COMMENT%%
+
+Key-Type: RSA
+Key-Length: 4096
+Key-Usage: encrypt,sign,auth
+
+Subkey-Type: RSA
+Subkey-Length: 4096
+Subkey-Usage: encrypt,sign,auth
+
+
+Passphrase: %%PASSPHRASE%%
+%commit
