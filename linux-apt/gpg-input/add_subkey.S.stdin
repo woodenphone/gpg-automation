@@ -1,0 +1,43 @@
+#! grep -v -e '^#'
+## add_subkey.S.stdin
+## grep -v -e '^#' add_auth_subkey.stdin |
+## To be fed into gpg --edit-key KEYGRIP
+##
+# gpg>
+addkey
+# Please select what kind of key you want:
+#    (3) DSA (sign only)
+#    (4) RSA (sign only)
+#    (5) Elgamal (encrypt only)
+#    (6) RSA (encrypt only)
+#    (7) DSA (set your own capabilities)
+#    (8) RSA (set your own capabilities)
+#   (10) ECC (sign only)
+#   (11) ECC (set your own capabilities)
+#   (12) ECC (encrypt only)
+#   (13) Existing key
+#   (14) Existing key from card
+8
+#
+# Possible actions for a RSA key: Sign Encrypt Authenticate 
+# Current allowed actions: Sign Encrypt 
+#    (S) Toggle the sign capability
+#    (E) Toggle the encrypt capability
+#    (A) Toggle the authenticate capability
+#    (Q) Finished
+e
+q
+#
+#
+# RSA keys may be between 1024 and 4096 bits long.
+# What keysize do you want? (3072)
+4096
+# Requested keysize is 4096 bits
+#
+#
+# Key is valid for? (0)
+0
+# Key does not expire at all
+#
+#
+save
