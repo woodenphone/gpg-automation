@@ -1,4 +1,4 @@
-#!
+#!/usr/bin/env bash
 ## ubuntu-setup-for-regular-use.sh
 ## Set up a specified GPG key & smartcard on a daily-use machine.
 echo "#[${0##*/}]" "== Start ==" "[at $(date +%c,\ @%s)]"
@@ -9,8 +9,6 @@ gpg --import $1
 
 
 ## TODO: PCRE magic to avoid manual keyid/keygrip entry
-
-
 
 
 echo "#[${0##*/}]" "Trust public key absolutely"

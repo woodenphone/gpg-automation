@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-## ubuntu.stepn.generate-key.sh
+## stepn.generate-key.sh
 ##
 echo "#[${0##*/}]" "== Start ==" "[at $(date +%c,\ @%s)]"
 
@@ -29,7 +29,7 @@ key_comment='This is an example key'
 #     | tee /dev/tty \
 #     | gpg --command-fd=0 \
 #     --pinentry-mode=loopback  --passphrase="$key_passphrase" \
-#     ---expert --full-generate-key \
+#     --expert --full-generate-key \
 #     | perl -ne 'm/([A-Z0-9]+).rev/ ; print "$&"' \
 #     | tee KEYID.txt
 # KEYID="$(cat KEYID.txt)"
@@ -39,20 +39,28 @@ key_comment='This is an example key'
 echo "#[${0##*/}]" "Create master key"
 (   tee "dbg.create-master-key.heredoc.txt" \
     | grep -v -e '^#' \
-    | tee "dbg.create-master-key.stripped.txt" | tee /dev/tty \
+    | tee "dbg.create-master-key.stripped.txt" \
+    | tee /dev/tty \
     | gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
     --pinentry-mode=loopback --passphrase="$key_passphrase" \
-    ---expert --full-generate-key \
-    | tee "dbg.create-master-key.gpg-stdout.txt"
-    | perl -ne 'm/([A-Z0-9]+).rev/ ; print "$&"' \
+    --with-colons \
+    --expert --full-generate-key 2>&1 \
+    | tee "dbg.create-master-key.gpg-stdout.txt" \
+    | perl -ne 'print "$1\n" if m/^gpg: key ([A-Z0-9]+) marked as ultimately trusted/;' \
+    | tee /dev/tty \
     | tee KEYID.txt
 ) <<EOF-create-master-key
 # gpg>
-## Custon RSA (8):
+## Please select what kind of key you want:
+## (8) RSA (set your own capabilities)
 8
 ## Toggle/set key capabilities:
+## Possible actions for a RSA key: Sign Certify Encrypt Authenticate
+## Current allowed actions: Sign Certify Encrypt
 e
 s
+## Current allowed actions: Certify
+## (Q) Finished
 q
 ## How many bits long is key?
 4096
@@ -60,9 +68,14 @@ q
 0
 y
 ## Key user details
+## Real name: 
 $key_realname
-$key_email/
+## Email address: 
+$key_email
+## Comment: 
 $key_comment
+##Change (N)ame, (C)omment, (E)mail or (O)kay/(Q)uit?
+o
 ## Save and exit
 save
 EOF-create-master-key
@@ -73,12 +86,13 @@ echo "#[${0##*/}]" "KEYID=$KEYID"
 
 
 echo "#[${0##*/}]" "Create subkey: auth"
-(   grep -v -e '^#' "dbg.create-subkey-auth.heredoc.txt" |\
+(   grep -v -e '^#' "dbg.create-subkey-auth.heredoc.txt" \
     | grep -v -e '^#' \
-    | tee "dbg.create-subkey-auth.stripped.txt" | tee /dev/tty \
-    gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
+    | tee "dbg.create-subkey-auth.stripped.txt" \
+    | tee /dev/tty \
+    | gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
     --pinentry-mode=loopback --passphrase="$key_passphrase" \
-    --expert --key-edit "$KEYID"
+    --expert --key-edit "$KEYID" \
     | tee "dbg.create-subkey-auth.gpg-stdout.txt"
 ) <<EOF-create-subkey-auth
 # gpg>
@@ -109,12 +123,13 @@ EOF-create-subkey-auth
 
 
 echo "#[${0##*/}]" "Create subkey: sign"
-(   grep -v -e '^#' "dbg.create-subkey-sign.heredoc.txt" |\
+(   grep -v -e '^#' "dbg.create-subkey-sign.heredoc.txt" \
     | grep -v -e '^#' \
-    | tee "dbg.create-subkey-sign.stripped.txt" | tee /dev/tty \
-    gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
+    | tee "dbg.create-subkey-sign.stripped.txt" \
+    | tee /dev/tty \
+    | gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
     --pinentry-mode=loopback --passphrase="$key_passphrase" \
-    --expert --key-edit "$KEYID"
+    --expert --key-edit "$KEYID" \
     | tee "dbg.create-subkey-sign.gpg-stdout.txt"
 ) <<EOF-create-subkey-sign
 # gpg>
@@ -143,12 +158,13 @@ EOF-create-subkey-sign
 
 
 echo "#[${0##*/}]" "Create subkey: encrypt"
-(   grep -v -e '^#' "dbg.create-subkey-encrypt.heredoc.txt" |\
+(   grep -v -e '^#' "dbg.create-subkey-encrypt.heredoc.txt" \
     | grep -v -e '^#' \
-    | tee "dbg.create-subkey-encrypt.stripped.txt" | tee /dev/tty \
-    gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
+    | tee "dbg.create-subkey-encrypt.stripped.txt" \
+    | tee /dev/tty \
+    | gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
     --pinentry-mode=loopback  --passphrase="$key_passphrase" \
-    --expert --key-edit "$KEYID" 
+    --expert --key-edit "$KEYID" \
     | tee "dbg.create-subkey-encrypt.gpg-stdout.txt"
 ) <<EOF-create-subkey-encrypt
 # gpg>
