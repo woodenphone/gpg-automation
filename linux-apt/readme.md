@@ -9,6 +9,8 @@ $ byobu
 $ ls -lahQ
 $ sudo whoami # To allow later sudo usage to skip password.
 
+$ rm dbg.* KEYID.txt
+
 $ sudo apt-get update && sudo apt-get upgrade -y
 $ bash step01-online.sh
 

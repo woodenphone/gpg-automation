@@ -9,6 +9,7 @@ echo "#[${0##*/}]" "USER=$USER"
 echo "#[${0##*/}]" "hostname: $(hostname)"
 echo "#[${0##*/}]" "uname: $(uname -a)"
 echo "#[${0##*/}]" "system-release: $(cat /etc/system-release)"
+echo "#[${0##*/}]" "Ensure sudo is available" "$(sudo whoami)"
 
 # echo "#[${0##*/}]" "Install packages: Update all" "[at $(date +%c,\ @%s)]"
 # sudo apt-get update && sudo apt-get upgrade -y

@@ -14,6 +14,15 @@ key_email='anonymous@example.com'
 key_comment='This is an example key'
 
 
+echo "#[${0##*/}]" "Ensure sudo is available" "$(sudo whoami)"
+
+
+echo "#[${0##*/}]" "Set GNUPGHOME var"
+## See: https://github.com/drduh/YubiKey-Guide#temporary-working-directory
+#export GNUPGHOME=$(mktemp -d)
+export GNUPGHOME=~/gnupg-workspace
+echo "#[${0##*/}]" "GNUPGHOME=$GNUPGHOME"
+mkdir -vp $GNUPGHOME
 
 # echo "#[${0##*/}]" "Create master key"
 # # Echo in any line not starting with hash character ('#')
@@ -34,6 +43,11 @@ key_comment='This is an example key'
 #     | tee KEYID.txt
 # KEYID="$(cat KEYID.txt)"
 # echo "#[${0##*/}]" "KEYID=$KEYID"
+
+
+echo "#[${0##*/}]" "Seed PRNG with entropy from yubikey"
+echo "SCD RANDOM 512" | gpg-connect-agent | sudo tee /dev/random | hexdump -C
+## See: https://github.com/drduh/YubiKey-Guide#yubikey
 
 
 echo "#[${0##*/}]" "Create master key"
@@ -86,7 +100,7 @@ echo "#[${0##*/}]" "KEYID=$KEYID"
 
 
 echo "#[${0##*/}]" "Create subkey: auth"
-(   grep -v -e '^#' "dbg.create-subkey-auth.heredoc.txt" \
+(   tee "dbg.create-subkey-auth.heredoc.txt" \
     | grep -v -e '^#' \
     | tee "dbg.create-subkey-auth.stripped.txt" \
     | tee /dev/tty \
@@ -123,7 +137,7 @@ EOF-create-subkey-auth
 
 
 echo "#[${0##*/}]" "Create subkey: sign"
-(   grep -v -e '^#' "dbg.create-subkey-sign.heredoc.txt" \
+(   tee "dbg.create-subkey-sign.heredoc.txt" \
     | grep -v -e '^#' \
     | tee "dbg.create-subkey-sign.stripped.txt" \
     | tee /dev/tty \
@@ -158,7 +172,7 @@ EOF-create-subkey-sign
 
 
 echo "#[${0##*/}]" "Create subkey: encrypt"
-(   grep -v -e '^#' "dbg.create-subkey-encrypt.heredoc.txt" \
+(   tee "dbg.create-subkey-encrypt.heredoc.txt" \
     | grep -v -e '^#' \
     | tee "dbg.create-subkey-encrypt.stripped.txt" \
     | tee /dev/tty \
@@ -201,32 +215,59 @@ echo "#[${0##*/}]" "TODO: Verify subkey: encrypt"
 
 echo "#[${0##*/}]" "WIP: Export keys"
 echo "#[${0##*/}]" "WIP: Export secret masterkey"
+# echo '' \
+    # | 
 gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
     --pinentry-mode=loopback  --passphrase="$key_passphrase" \
     --armor \
-    --export-secret-keys $KEYID > $GNUPGHOME/mastersub.key
+    --export-secret-keys $KEYID > $GNUPGHOME/gpg-$KEYID-$(date +%F).mastersub.key
+
 
 echo "#[${0##*/}]" "WIP: Export secret subkeys"
 gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
     --pinentry-mode=loopback  --passphrase="$key_passphrase" \
     --armor \
-    --export-secret-subkeys $KEYID > $GNUPGHOME/sub.key
+    --export-secret-subkeys $KEYID > $GNUPGHOME/gpg-$KEYID-$(date +%F).sub.key
 
 
 
 echo "#[${0##*/}]" "WIP: Make revokation certificate"
-gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
+(   tee "dbg.make-revokation-cert.heredoc.txt" \
+    | grep -v -e '^#' \
+    | tee "dbg.make-revokation-cert.stripped.txt" \
+    | tee /dev/tty \
+    | gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
     --pinentry-mode=loopback  --passphrase="$key_passphrase" \
-    --output $GNUPGHOME/revoke.asc \
-    --gen-revoke $KEYID
+    --output $GNUPGHOME/gpg-$KEYID-$(date +%F).spare-revocation-cert.asc \
+    --gen-revoke $KEYID \
+    | tee "dbg.make-revokation-cert.gpg-stdout.txt"
+) <<EOF-make-revokation-cert
+# gpg>
+#Create a revocation certificate for this key? (y/N) y
+y
+#Please select the reason for the revocation:
+#  0 = No reason specified
+#  1 = Key has been compromised
+#  2 = Key is superseded
+#  3 = Key is no longer used
+#  Q = Cancel
+#(Probably you want to select 1 here)
+#Your decision?
+1
+#Enter an optional description; end it with an empty line:
+Backup revocation cert made at key creation time.
+
+#Is this okay? (y/N)
+y
+EOF-make-revokation-cert
 
 
 
-
-echo "#[${0##*/}]" "WIP: Export public key"
+echo "#[${0##*/}]" "Export public key"
 gpg --command-fd=/dev/stdin --status-fd=/dev/stdout \
     --armor --export "$KEYID" > "$HOME/gpg-$KEYID-$(date +%F).pubkey.asc"
 
+echo "#[${0##*/}]" "TODO: Export public key (for ssh)"
 
 
 echo "#[${0##*/}]" "TODO: Export key stubs"
