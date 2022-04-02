@@ -1,0 +1,7 @@
+## .gitignore
+
+
+## VSCode IDE
+*.code-workspace
+.vscode/
+
