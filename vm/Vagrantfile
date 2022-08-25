@@ -1,0 +1,47 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+Vagrant.configure("2") do |config|
+  config.vm.define "ubuntu" do |ubuntu|
+    ubuntu.vm.box = "ubuntu/focal64" ## Ubuntu 20.04 LTS
+    ubuntu.vm.hostname = "ubuntu-crypto"
+    vm.synced_folder "./synced", "/synced"
+    ## box-specific Virtualbox config
+    ubuntu.vm.provider "virtualbox" do |vb|
+      vb.customize ["modifyvm", :id, "--usbxhci", "on"] # Enable USB3.
+      vb.customize ["usbfilter", "add", "0", # Assign specific USB device.
+        "--target", :id, # VM to set rule for.
+        "--name", "Nitrokey Start", # Rule name
+        "--active", "yes", # Filter enable state.
+        "--vendorid", "0x20a0", # USB VID.
+        "--productid","0x4211" # USB PID.
+        #"--serialnumber", "" # If 2+ of a product.
+      ] 
+      ## Check: $ VBoxManage list usbhost
+      ## https://www.virtualbox.org/manual/ch08.html#vboxmanage-usbfilter
+      ## https://www.virtualbox.org/manual/ch03.html#settings-usb
+    end
+    ubuntu.vm.provision "ansible" do |ansible|
+      ansible.playbook = "playbook.yml"
+      ansible.galaxy_role_file = "requirements.yml"
+      ansible.galaxy_command = "ansible-galaxy install -r requirements.yml"
+      ansible.verbose = "vv"
+      end
+  end
+  config.vm.provider "virtualbox" do |vb| ## Virtualbox VM config
+    vb.gui = true # Open the VM in a window.
+    vb.memory = "2048"
+    vb.cpus = 2
+    vb.linked_clone = true # Use a oneoff master VB image for faster rebuild.
+    vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"] # Restrict CPU usage:
+    vb.customize ["modifyvm", :id, "--draganddrop", "hosttoguest"] # Enables drag-and-drop between host and guest
+    vb.customize ["modifyvm", :id, "--clipboard", "bidirectional"] # Enables a bidirectional clipboard between host and guest
+    ## ! NOTE !  From: https://www.virtualbox.org/manual/ch06.html#network_hostonly
+    ## ""...VirtualBox will only allow IP addresses in 192.168.56.0/21 range to be assigned to host-only adapters..."
+  end
+end
+

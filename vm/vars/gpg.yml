@@ -1,0 +1,35 @@
+## vm/vars/gpg.yml
+## Variables for GPG related things.
+---
+## GPG key creation values:
+gpg_key_length: 2048
+gpg_key_fullname: "Jon Doe"
+gpg_key_email: "testing@example.com"
+gpg_key_comment: "Key for demo use only"
+gpg_key_passphrase: "IAcceptTheRisk"
+
+## Values to set smartcard to use:
+## All PINs must be 8 chars or longer.
+sc_user_pin: "knockers"
+sc_unlock_pin: "swordfish"
+sc_admin_pin: "love-sex-god"
+
+## Maximum PIN attempt numbers:
+sc_retries_user: 16
+sc_retries_unlock: 16
+sc_retries_admin: 16
+
+## Defaults used to setup a new smartcard:
+sc_factory_admin_pin: "12345678" # Yubikey
+sc_configuration_lock_code: false
+
+## Is the smartcard a yubikey?
+sc_is_yubikey: true
+sc_yubikey_full_reset: false
+
+## Locations used by scripting:
+# gnupg_config_dir: "/home/vagrant/.gnupg/"
+# gnupg_scripts_dir: "/home/vagrant/gpg-demo/scripts/"
+# gnupg_marker_dir: "/home/vagrant/gpg-demo/markers/"
+# gnupg_secrets_dir: "/home/vagrant/gpg-demo/secrets/"
+# gnupg_keys_dir: "/home/vagrant/gpg-demo/keys/"

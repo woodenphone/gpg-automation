@@ -1,0 +1,6 @@
+## vm/vars/vars.yml
+---
+
+
+sys_user: "vagrant" # User account.
+sys_group: "vagrant" # User account.

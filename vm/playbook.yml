@@ -1,0 +1,304 @@
+#!ansible-playbook -vv
+## vm/playbook.yml
+---
+- name: 'Vagrant GPG demo'
+  hosts: all
+  vars_files:
+    - "vars.yml"
+    - "vars/gpg.yml"
+  vars:
+    gnupg_config_dir: "/home/vagrant/.gnupg/"
+    gnupg_scripts_dir: "/home/vagrant/gpg-demo/scripts/"
+    gnupg_marker_dir: "/home/vagrant/gpg-demo/markers/"
+    gnupg_secrets_dir: "/home/vagrant/gpg-demo/secrets/"
+    gnupg_keys_dir: "/home/vagrant/gpg-demo/keys/"
+    # some_secret: "{{ lookup('community.general.passwordstore', 'demos/gpg/some_secret') }}" ## Less-terrible way to store a secret.
+  pre_tasks: [] # (Run sequentially before roles.)
+  roles: []
+  tasks: #[]
+    - name: "APT Packages updated"
+      ansible.builtin.apt:
+        state: latest
+        update_cache: true
+        cache_valid_time: 3600
+        name: "*"
+      become: true
+      when: ansible_facts['os_family'] == 'Debian'
+    
+    - name: "APT Packages present"
+      ansible.builtin.apt:
+        state: latest
+        update_cache: true
+        cache_valid_time: 3600
+        name: ## Assumption: Default Ubuntu packages present.
+          ## Convenience
+          - screen 
+          - tmux
+          - byobu
+          - nano
+          - vim 
+          - curl
+          - wget
+          ## Essential
+          - gnupg2
+          - gnupg-agent
+          - scdaemon
+          - pcsclite
+          ## Yubikey
+          - yubikey-personalization
+          ## Relevant
+          - hopenpgp-tools
+          ## Python3
+          - python3
+          - python3-pip
+          - python3-pyscard
+          ## Applications relying on crypto
+          - password-store
+          - gopass
+          - git
+          - ssh
+          - 'rsync'
+          ## Utility
+          - 'perl' # PCRE
+          - 'net-tools' # For ifconfig
+      become: true
+      when: ansible_facts['os_family'] == 'Debian'
+    
+    - name: "Pip packages present"
+      ansible.builtin.pip:
+        state: present
+        name:
+          - PyOpenSSL
+          - yubikey-manager
+    
+    - name: "Smartcard service running"
+      ansible.builtin.service:
+        name: pcscd
+        state: started
+        enabled: true
+      become: true
+  
+  
+    ## Cleanup test environment before starting:
+    - name: "Initial cleanup performed"
+      block:
+        - name: "Markerfiles absent" # Cleanup test env.
+          ansible.builtin.file:
+            state: 'absent'
+            path: "{{ gnupg_marker_dir }}"
+
+        - name: "Markerfile dir present" # Cleanup test env.
+          ansible.builtin.file:
+            state: 'directory'
+            path: "{{ gnupg_marker_dir }}"
+            mode: 'u=rwX,g=rX,o=' # 'X' = Set dirs listable.
+              
+        - name: "GPG keystore erased" # Cleanup test env.
+          ansible.builtin.file:
+            state: 'absent'
+            path: "{{ item }}"
+            with_items: 
+              - "{{ gnupg_config_dir }}/pubring.kbx"
+              - "{{ gnupg_config_dir }}/trustdb.gpg"
+  
+  
+    ## GPG prep
+    - name: "GPG prepared"
+      block:
+        - name: "GPG config dir present"
+          ansible.builtin.file:
+            state: 'directory'
+            path: "{{ gnupg_config_dir }}"
+            mode: 'u=rwX,g=,o=' # 'X' = Set dirs listable.
+            
+        - name: "GPG config files present"
+          ansible.builtin.copy:
+            src: "files/gpg-config/" # Trailing "/" means contents.
+            dest: "/home/vagrant/.gnupg/"
+
+        - name: "GPG scripts dir present"
+          ansible.builtin.file:
+            state: 'directory'
+            path: "{{ gnupg_scripts_dir }}"
+            mode: 'u=rwX,g=,o=' # 'X' = Set dirs listable.
+
+        - name: "GPG scripts present"
+          ansible.builtin.copy:
+            src: "files/gpg-scripts/" # Trailing "/" means contents.
+            dest: "{{ gnupg_scripts_dir }}"
+            mode: "u=rwx,g=rx,o=rx" # Scripts should be set executable.
+
+
+    ## Secrets written to files to pass into scripts:
+    - name: "Secret files created"
+      block:
+        - name: "Secrets dir erased"
+          ansible.builtin.file:
+            state: 'absent'
+            path: "{{ gnupg_secrets_dir }}"
+            
+        - name: "Secrets dir exists"
+          ansible.builtin.file:
+            state: 'directory'
+            path: "{{ gnupg_secrets_dir }}"
+            mode: 'u=rwX,g=,o=' # 'X' = Set dirs listable.
+        
+        - name: "gpg_key_passphrase file created"
+          ansible.builtin.copy:
+            content: "{{ gpg_key_passphrase }}"
+            dest: "{{ gnupg_secrets_dir }}/gpg_key_passphrase"
+            mode: "u=rw,g=,o="
+
+        - name: "sc_user_pin file created"
+          ansible.builtin.copy:
+            content: "{{ sc_user_pin }}"
+            dest: "{{ gnupg_secrets_dir }}/sc_user_pin"
+            mode: "u=rw,g=,o="
+          
+        - name: "sc_unlock_pin file created"
+          ansible.builtin.copy:
+            content: "{{ sc_unlock_pin }}"
+            dest: "{{ gnupg_secrets_dir }}/sc_unlock_pin"
+            mode: "u=rw,g=,o="
+          
+        - name: "sc_admin_pin file created"
+          ansible.builtin.copy:
+            content: "{{ sc_admin_pin }}"
+            dest: "{{ gnupg_secrets_dir }}/sc_admin_pin"
+            mode: "u=rw,g=,o="
+
+
+    ## Smartcard preperation:
+    - name: "Smartcard reset"
+      block:
+        - name: "Smartcard reset executed"
+          ansible.builtin.shell: 
+            cmd: "{{ gnupg_scripts_dir }}/sc-factory-reset.sh"
+        
+        - name: "Yubikey-specific reset actions"    
+          ansible.builtin.shell: 
+            cmd: |
+              echo "Erasing Yubikey FIDO (Requires touch)"
+              ykman fido reset --force
+              echo "Erasing Yubikey OATH"
+              ykman oath reset --force
+              echo "Erasing Yubikey OTP"
+              ykman otp delete --force 1
+              ykman otp delete --force 2
+              echo "Erasing Yubikey PIV"
+              ykman piv reset --force
+              echo "Erasing Yubikey OpenPGP"
+              ykman openpgp reset --force
+              echo "Erasing Yubikey config lock code"
+              ykman config set-lock-code --clear --force
+          when: 
+            - (sc_is_yubikey is defined) and (sc_is_yubikey)
+            - (sc_yubikey_full_reset is defined) and (sc_yubikey_full_reset)
+            
+        
+        - name: "[Yubikey only] Smartcard PIN retry maximums set"
+          ansible.builtin.shell: 
+            cmd: >
+              ykman openpgp set-pin-retries 
+              --admin-pin={{ sc_factory_admin_pin|quote }}
+              10 10 10
+            ## Usage: ykman openpgp set-pin-retries [OPTIONS] PIN-RETRIES   RESET-CODE-RETRIES ADMIN-PIN-RETRIES
+          when: (sc_is_yubikey is defined) and (sc_is_yubikey)
+
+
+        - name: "[Yubikey only] Smartcard OTP applet disabled" # TODO
+          ansible.builtin.shell: 
+            cmd: |
+              ykman config usb --disable OTP
+            ## https://docs.yubico.com/software/yubikey/tools/ykman/OTP_Commands.html
+          when: (sc_is_yubikey is defined) and (sc_is_yubikey)
+
+        - name: "[Yubikey only] Smartcard touch requirement enabled"
+          ansible.builtin.shell: 
+            cmd: |
+              ykman openpgp set-touch --admin-pin={{ sc_factory_admin_pin|quote }} sig on
+              ykman openpgp set-touch --admin-pin={{ sc_factory_admin_pin|quote }} enc on
+              ykman openpgp set-touch --admin-pin={{ sc_factory_admin_pin|quote }} aut on
+              ykman openpgp set-touch --admin-pin={{ sc_factory_admin_pin|quote }} att on
+            ## https://docs.yubico.com/software/yubikey/tools/ykman/Base_Commands.html#ykman-config-usb-options
+          when: (sc_is_yubikey is defined) and (sc_is_yubikey)
+
+
+    ## Secret key creation
+    - name: "Keys created"
+      block:
+          ## This is expected to create "{{ gnupg_keys_dir|quote }}/key-fingerprint.txt"
+        - name: "Secret key(s) created"
+          ansible.builtin.shell: 
+            cmd: |
+              export GPG_KEY_LENGTH={{ gpg_key_length | quote }}
+              export GPG_KEY_FULLNAME={{ gpg_key_fullname | quote }}
+              export GPG_KEY_EMAIL={{ gpg_key_email | quote }}
+              export GPG_KEY_COMMENT={{ gpg_key_comment | quote }}
+              {{ gnupg_scripts_dir | quote }}/create-secret-keys.sh
+
+        - name: "Revocation certificate created"
+        - name: "Secret key backed up"
+        
+        - name: "Public key exported"
+          ansible.builtin.shell: 
+            cmd: >
+              gpg --command-fd=/dev/stdin --status-fd=/dev/stdout
+              --output={{ gnupg_keys_dir|quote }}/pubkey.asc
+              --armor --export 
+              $(cat {{ gnupg_keys_dir|quote }}/key-fingerprint.txt) 
+            ## https://www.gnupg.org/documentation/manuals/gnupg/Operational-GPG-Commands.html#Operational-GPG-Commands
+            
+        - name: "Public ssh key exported"
+          ansible.builtin.shell: 
+            cmd: >
+              gpg --command-fd=/dev/stdin --status-fd=/dev/stdout
+              --output={{ gnupg_keys_dir|quote }}/pubkey.ssh
+              --export-ssh-key 
+              $(cat {{ gnupg_keys_dir|quote }}/key-fingerprint.txt)
+            ## https://www.gnupg.org/documentation/manuals/gnupg/Operational-GPG-Commands.html#Operational-GPG-Commands
+            
+            
+    ## Smartcard programmed with secret key:
+    - name: "Secret key programmed onto smartcard"
+      block:
+        - name: "Key forgotten by GPG" # Ensure clean programming
+          ansible.builtin.shell: 
+            cmd: >
+              {{ gnupg_scripts_dir | quote }}/forget-key.sh
+              $(cat {{ gnupg_keys_dir|quote }}/key-fingerprint.txt)
+              
+        - name: "Secret key loaded from backup"
+        - name: "Key trusted absolutely"
+        - name: "Secret key moved to card"
+        - name: "Smartcard PIN codes set"
+          ansible.builtin.shell: 
+            cmd: >
+              {{ gnupg_scripts_dir | quote }}/change-pins.sh
+            
+        - name: "Key pointers/stubs exported"
+        - name: "Key forgotten by GPG" # Remove stubs, clean state for later.
+          ansible.builtin.shell: 
+            cmd: >
+              {{ gnupg_scripts_dir | quote }}/forget-key.sh
+              $(cat {{ gnupg_keys_dir|quote }}/key-fingerprint)
+              
+              
+    # Steps for use following creation:
+    - name: "GPG configured to use key on smartcard"
+      block:
+        - name: "Public key Imported"
+        - name: "Key trusted absolutely"
+        - name: "SC mainkey keystubs Imported"
+        - name: "SC subkey keystubs Imported"
+    
+    
+    ## Use key on smartcard to prove it works:
+    - name: "Smartcard functionality demonstrated"
+      block:
+        - name: "File encrypted then decrypted"
+        - name: "Message signed"
+        - name: "Git commit signed"
+
+  post_tasks: [] ## (Run sequentially after roles.)
+  handlers: [] # (Run only if triggered by notify directive.)
